@@ -10,13 +10,14 @@
 #include "adc.h"
 //#include "dma.h"
 #include <math.h>
+#include <stdlib.h>
 #include <string.h>
 
 
 uint8_t i;
-int sudutRoll, sudutPitch;
+float sudutRoll, sudutPitch, sudutYaw;
 uint8_t fix;
-uint8_t* received;
+uint8_t received;
 uint16_t adcData;
 extern uint8_t singleByte;
 extern uint8_t singleByte2;
@@ -26,18 +27,20 @@ extern char receivedChr;
 extern UART_HandleTypeDef huart6;
 extern uint16_t yaww;
 
+int iterasi=0;
+
 void SystemClock_Config(void);
 void i2c1_send_data(uint16_t addr, uint8_t* data, uint8_t length);
 void i2c1_receive_data(uint16_t addr, uint8_t* data, uint8_t length);
 
 #define g 9.81 // 1g ~ 9.81 m/s^2
 #define magnetometer_cal 0.06 //magnetometer calibration
-#define kp 50//200
-#define ki 2//50
-#define kd 5//40
+#define kp 37
+#define ki 15
+#define kd 14
 #define massa 1.265
 #define panjang 0.54
-#define d 0.3 
+#define d 0.5
 #define phi 3.14
 
 float ixx = massa * ((panjang*panjang)+(panjang*panjang));
@@ -46,13 +49,13 @@ float izz = (massa * (panjang*panjang))/12;
 
 float k1,k2,k3,vpitch,vroll,vyaw,vx,vy,vz,u1,u2,u3,u4,f1,f2,f3,f4;
 int lastTime;
-float OutPIDVR, OutPIDVP, OutPIDVY, OutPIDR, OutPIDP, OutPIDY;
+float now, OutPIDVR, OutPIDVP, OutPIDVY, OutPIDR, OutPIDP, OutPIDY;
 float errSumVR, lastErrVR, errSumVP, lastErrVP, errSumVY, lastErrVY, errSumR, lastErrR, errSumP, lastErrP, errSumY, lastErrY;
 float esc1, esc2, esc3, esc4, GxErr=0.0, GyErr=0.0, GzErr=0.0, RErr = 0.0, PErr = 0.0, YErr = 0.0, lastVP=0, lastVR=0, lastVY=0;
 double dErrVP, dErrVY,dErrVR,timeChange;
-float rollHit,pitchHit,yawHit;
-int now;
-char txData[200], rxData[30];
+float rollHit,pitchHit,yawHit,z;
+int ARM, hitu1=0;
+char txData[200];
  int main(void){
   HAL_Init();
   SystemClock_Config();
@@ -73,23 +76,10 @@ char txData[200], rxData[30];
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_4);
 	
-	
-	
-//	init_esc();
-//	HAL_Delay(500);
-//	set_esc(TIM_CHANNEL_3, 1400);
-	
+	 
 	init_esc();
 	HAL_Delay(1000);
-	
-	//TIM4->CCR4 = 1100;
-	
-	//HAL_Delay(2000);
-	//TIM4->CCR1 = 1300;
-//	HAL_Delay(1000);
-//	TIM4->CCR3 = 1300;
-//	HAL_Delay(1000);
-	
+ 
 	__HAL_UART_ENABLE_IT(&huart6, UART_IT_TC);
 //	__HAL_UART_ENABLE_IT(&huart3, UART_IT_TC);
 	
@@ -99,7 +89,7 @@ char txData[200], rxData[30];
 	HAL_UART_Init(&huart3);
 	
   HAL_UART_Receive_IT(&huart6, &singleByte, 1);
-	HAL_UART_Receive(&huart3, (uint8_t*)&rxData, strlen(rxData), 1);
+	HAL_UART_Receive(&huart3, &received, 1, 1);
   
   byteSent = 0x14;
   HAL_UART_Transmit_IT(&huart6, &byteSent, 1);
@@ -111,23 +101,29 @@ char txData[200], rxData[30];
  
 	HAL_TIM_Base_Start(&htim1);
 	 HAL_TIM_Base_Start(&htim2);
+	// ARM=1;
 	
 	while (1){
 		
+		HAL_UART_Receive(&huart3, &received, 1, 10);
+		ARM= received-'0';
+		
 		HAL_ADC_Start(&hadc1);
 		adcData = HAL_ADC_GetValue(&hadc1);
-
-		now = TIM1->CNT;	
-		timeChange = (now - lastTime)/1000;
+		
+		z = 7.5 * adcData/4096;
+		
+		now = 0.03;//TIM1->CNT;	168000000
+		timeChange = (now - lastTime);
 
 		//(x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 		if(roll >=0 && roll <=127){
 			rollHit = (roll)*(130)/(127);//((roll) * (85.0/255.0));
-			sudutRoll = rollHit;
+			sudutRoll = rollHit*phi/180;
 		}
 		else if (roll>=128){
 			rollHit = (roll-255)*(-130)/(-127);
-			sudutRoll = rollHit;
+			sudutRoll = rollHit*phi/180;
 		}
 		rollHit *= phi;
 		rollHit /= 180;
@@ -135,17 +131,18 @@ char txData[200], rxData[30];
 		//pitchHit = ((pitch) * (85.0/255.0));		
 		if(pitch >=0 && pitch <=127){
 			pitchHit = (pitch)*(130)/(127);//((roll) * (85.0/255.0));
-			sudutPitch = pitchHit;
+			sudutPitch = pitchHit*phi/180;
 		}
 		else if (pitch>=128){
 			pitchHit = (pitch-255)*(-130)/(-127);
-			sudutPitch = pitchHit;
+			sudutPitch = pitchHit*phi/180;
 		}
 		pitchHit *= phi;
 		pitchHit /= 180;
 		pitchHit /= timeChange;
 		
-		yawHit=yaww;
+		sudutYaw = yaww*phi/360;
+		yawHit = sudutYaw;
 		yawHit *= phi;
 		yawHit /= 180;
 		yawHit /= timeChange;
@@ -186,51 +183,64 @@ char txData[200], rxData[30];
 		OutPIDVY = (kp * GzErr) + (ki * errSumVY) + (kd * dErrVY);
 	//
 		lastErrVY = GzErr;
-		
-		
-	//------------------------Decouple-------------------------------------------------
-
+ 
 		vroll = OutPIDVR; 
 		vpitch = OutPIDVP; 
 		vyaw = OutPIDVY;
 		
 		vx = 0;
 		vy = 0; 
-		vz = 0;
-
-		k1 = ((ixx+iyy-izz) * (GyErr*GxErr* sin(sudutRoll) ))+((-ixx + iyy - izz) * (GyErr * GzErr * sin(sudutPitch) * sin (sudutRoll) ))+((ixx + iyy - izz)*GxErr*GzErr*cos(sudutPitch)*cos(sudutRoll))+((iyy-izz)*(GzErr*GzErr)*sin(sudutPitch)*cos(sudutPitch)*cos(sudutRoll));
-		k2 = ((-iyy + (izz - ixx)*cos(20))*GyErr*GzErr*cos(sudutPitch)) + ((izz - ixx)*((GyErr*GyErr)-(GzErr*GzErr)*cos(sudutPitch)*cos(sudutPitch))*sin(sudutRoll)*cos(sudutRoll));
-		k3 = ((-izz+ixx-iyy)*GyErr*GxErr*cos(sudutRoll))+((izz+ixx-iyy)*GyErr*GzErr*sin(sudutPitch)*cos(sudutRoll))+((izz-ixx+iyy)*GxErr*GzErr*cos(sudutPitch)*sin(sudutRoll))-((ixx-iyy)*(GzErr*GzErr)*sin(sudutPitch)*cos(sudutPitch)*sin(sudutRoll));
-
+		vz = z/timeChange;
+//---------------------------------------------------Decouple-------------------------------------------------------------------------
+		k1 = ((ixx+iyy-izz) * (pitchHit*rollHit* sin(sudutRoll) ))+((-ixx + iyy - izz) * (pitchHit * yawHit * sin(sudutPitch) * sin (sudutRoll)))+((ixx + iyy - izz)*rollHit*yawHit*cos(sudutPitch)*cos(sudutRoll))+((iyy-izz)*(yawHit*yawHit)*sin(sudutPitch)*cos(sudutPitch)*cos(sudutRoll));
+		k2 = ((-iyy + (izz - ixx)*cos(20))*pitchHit*yawHit*cos(sudutPitch)) + ((izz - ixx)*((pitchHit*pitchHit)-(yawHit*yawHit)*cos(sudutPitch)*cos(sudutPitch))*sin(sudutRoll)*cos(sudutRoll));
+		k3 = ((-izz+ixx-iyy)*pitchHit*rollHit*cos(sudutRoll))+((izz+ixx-iyy)*pitchHit*yawHit*sin(sudutPitch)*cos(sudutRoll))+((izz-ixx+iyy)*rollHit*yawHit*cos(sudutPitch)*sin(sudutRoll))-((ixx-iyy)*(yawHit*yawHit)*sin(sudutPitch)*cos(sudutPitch)*sin(sudutRoll));
+ 
 		u1 = massa * sqrt((vx*vx)+(vy*vy)+((vz+9.8)*(vz+9.8)));
-		u2 = ((ixx*vpitch)-(ixx*cos(yaww)*sin(sudutRoll)*vyaw))- k1;
-		u3 = ((iyy*vpitch)-(iyy*sin(yaww)*vyaw))- k2;
-		u4 = ((izz*sin(sudutPitch))-(izz*cos(yaww)*cos(sudutRoll)*vyaw))- k3;
-
+		u2 = ((ixx*cos(sudutRoll)*vpitch)-(ixx*cos(sudutPitch)*sin(sudutRoll)*vyaw))- k1;
+		u3 = ((iyy*vroll)+(iyy*sin(sudutPitch)*vyaw))- k2;
+		u4 = ((izz*sin(sudutRoll)*vpitch)+(izz*cos(sudutPitch)*cos(sudutRoll)*vyaw))- k3; 
+	 	if(z>1.5)hitu1-=3; else if(z<1.5)hitu1+=3;
+	 	u1+=hitu1;
+/*  	f1 = (u1 + (panjang * u3) - (d * u4));
+		f2 = (u1 - (panjang * u2) + (d * u4));
+		f3 = (u1 - (panjang * u3) - (d * u4));
+		f4 = (u1 + (panjang * u2) + (d * u4));
+			/*/
+		f1 = (u1/4) - (panjang*u2) + (u3/panjang*2) - (u4/4*d);
+		f2 = (u1/4) - (u2/panjang*2) + (u4/d*4);
+		f3 = (3*u1/4) + (panjang*u2) - (u3/panjang*2) + (u4/4*d);
+		f4 = (u1/4) + (u2*panjang/2) + (u4/4*d);
 		
-		f1 = (u1 + (panjang * u3) - (d * u4))*10;
-		f2 = (u1 - (panjang * u2) + (d * u4))*10;
-		f3 = (u1 - (panjang * u3) - (d * u4))*10;
-		f4 = (u1 + (panjang * u2) + (d * u4))*10;
-
-		if(adcData>835){
-			f1+=50;
-			f2+=50;
-			f3+=50;
-			f4+=50;
+		/*
+		if(z>1.6){
+			f1-=10;
+			f2-=10;
+			f3-=10;
+			f4-=10;
 		}
-		else if(adcData<890){
-			f1-=50;
-			f2-=50;
-			f3-=50;
-			f4-=50;
-		}
+		else if(z<1.5){
+			f1+=10;
+			f2+=10;
+			f3+=10;
+			f4+=10;
+		}else ;*/ 
 		
-		esc1 = -(f1 - 3419.125)/2.6058823529;
-		esc2 = -(f2 - 3419.125)/2.6058823529;
-		esc3 = -(f3 - 3419.125)/2.6058823529;
-		esc4 = -(f4 - 3419.125)/2.6058823529;
+		if(ARM==1||ARM==-48){
+		esc1 = (3419.125+f1)/2.6058823529;
+		esc2 = (3419.125+f2)/2.6058823529;
+		esc3 = (3419.125+f3)/2.6058823529;
+		esc4 = (3419.125+f4)/2.6058823529;
+		if(esc1<=1250)esc1=1250;if(esc2<=1250)esc2=1250;if(esc3<=1250)esc3=1250;if(esc4<=1250)esc4=1250;
+		if(esc1>=2000)esc1=2000;if(esc2>=2000)esc2=2000;if(esc3>=2000)esc3=2000;if(esc4>=2000)esc4=2000;
+		} else if(ARM==0){
+		esc1 = 0;
+		esc2 = 0;
+		esc3 = 0;
+		esc4 = 0;
+		} 
 		
+
 		set_esc(TIM_CHANNEL_1, esc1);
 		set_esc(TIM_CHANNEL_2, esc2);
 		set_esc(TIM_CHANNEL_3, esc3);
@@ -251,8 +261,37 @@ char txData[200], rxData[30];
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
 		sprintf(txData, "%f", esc4 );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "\t" );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "%f", vpitch );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "\t" );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "%f", vroll );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "\t" );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "%f", vyaw );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "\t" );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "%f", z );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "\t" );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "%f", GxErr );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "\t" );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "%f", GyErr );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "\t" );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "%f", GzErr );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
 		sprintf(txData, "\r \n" );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		
  
   }
 }

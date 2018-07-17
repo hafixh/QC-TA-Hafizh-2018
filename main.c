@@ -35,9 +35,9 @@ void i2c1_receive_data(uint16_t addr, uint8_t* data, uint8_t length);
 
 #define g 9.81 // 1g ~ 9.81 m/s^2
 #define magnetometer_cal 0.06 //magnetometer calibration
-#define kp 3.954	//4.028
-#define ki 0.000000021	//0.000000030156	
-#define kd 0.4//0.3596	//0.3596
+#define kp 3.9//3.913	//4.028
+#define ki 0.0000000183	//0.0000000183
+#define kd 0.5555//0.5
 #define massa 1.265
 #define panjang 0.54
 #define d 0.5
@@ -192,20 +192,20 @@ char txData[200];
 		vy = 0; 
 		vz = z/timeChange;
 //---------------------------------------------------Decouple-------------------------------------------------------------------------
-/*		k1 = ((ixx+iyy-izz) * (pitchHit*rollHit* sin(sudutRoll)))+((-ixx + iyy - izz) * (pitchHit * yawHit * sin(sudutPitch) * sin (sudutRoll)))+((ixx + iyy - izz)*rollHit*yawHit*cos(sudutPitch)*cos(sudutRoll))+((iyy-izz)*(yawHit*yawHit)*sin(sudutPitch)*cos(sudutPitch)*cos(sudutRoll));
+		k1 = ((ixx+iyy-izz) * (pitchHit*rollHit* sin(sudutRoll)))+((-ixx + iyy - izz) * (pitchHit * yawHit * sin(sudutPitch) * sin (sudutRoll)))+((ixx + iyy - izz)*rollHit*yawHit*cos(sudutPitch)*cos(sudutRoll))+((iyy-izz)*(yawHit*yawHit)*sin(sudutPitch)*cos(sudutPitch)*cos(sudutRoll));
 		k2 = ((-iyy + (izz - ixx)*cos(20))*pitchHit*yawHit*cos(sudutPitch)) + ((izz - ixx)*((pitchHit*pitchHit)-(yawHit*yawHit)*cos(sudutPitch)*cos(sudutPitch))*sin(sudutRoll)*cos(sudutRoll));
 		k3 = ((-izz+ixx-iyy)*pitchHit*rollHit*cos(sudutRoll))+((izz+ixx-iyy)*pitchHit*yawHit*sin(sudutPitch)*cos(sudutRoll))+((izz-ixx+iyy)*rollHit*yawHit*cos(sudutPitch)*sin(sudutRoll))-((ixx-iyy)*(yawHit*yawHit)*sin(sudutPitch)*cos(sudutPitch)*sin(sudutRoll));
-*/
+/*/
 		k1 = ((ixx+iyy-izz) * (vpitch *vroll * sin(sudutRoll)))+((-ixx + iyy - izz) * (vpitch * vyaw * sin(sudutPitch) * sin (sudutRoll)))+((ixx + iyy - izz)*vroll  *vyaw * cos(sudutPitch) * cos(sudutRoll)) + ((iyy-izz)*(vyaw * vyaw ) * sin(sudutPitch)*cos(sudutPitch)*cos(sudutRoll));
 		k2 = ((-iyy + (izz - ixx)*cos(20))*vpitch *vyaw *cos(sudutPitch)) + ((izz - ixx)*((vpitch *vpitch )-(vyaw *vyaw)*cos(sudutPitch)*cos(sudutPitch))*sin(sudutRoll)*cos(sudutRoll));
 		k3 = ((-izz+ixx-iyy)*vpitch *vroll *cos(sudutRoll))+((izz+ixx-iyy)*vpitch *vyaw *sin(sudutPitch)*cos(sudutRoll))+((izz-ixx+iyy)*vroll *vyaw *cos(sudutPitch)*sin(sudutRoll))-((ixx-iyy)*(vyaw *vyaw )*sin(sudutPitch)*cos(sudutPitch)*sin(sudutRoll));
-		
+		*/
 		u1 = massa * sqrt((vx*vx)+(vy*vy)+((vz+9.8)*(vz+9.8)));
 		u2 = ((ixx*cos(sudutRoll)*vpitch)-(ixx*cos(sudutPitch)*sin(sudutRoll)*vyaw))- k1;
 		u3 = ((iyy*vroll)+(iyy*sin(sudutPitch)*vyaw))- k2;
 		u4 = ((izz*sin(sudutRoll)*vpitch)+(izz*cos(sudutPitch)*cos(sudutRoll)*vyaw))- k3; 
 
-		if(z>0.8)hitu1-=15; else if(z<0.8)hitu1+=15;
+		if(z>0.8)hitu1-=10; else if(z<0.8)hitu1+=10;
 	 	u1+=hitu1;
 		
  /* 	f1 = (u1 + (panjang * u3) - (d * u4));

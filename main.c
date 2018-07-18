@@ -195,7 +195,7 @@ char txData[200];
 		vx = 0;
 		vy = 0; 
 		
-//---------------------------------------------------Decouple-------------------------------------------------------------------------
+//----------------------------------------------------Decouple-------------------------------------------------------------------------
 		k1 = ((ixx+iyy-izz) * (pitchHit*rollHit* sin(sudutRoll)))+((-ixx + iyy - izz) * (pitchHit * yawHit * sin(sudutPitch) * sin (sudutRoll)))+((ixx + iyy - izz)*rollHit*yawHit*cos(sudutPitch)*cos(sudutRoll))+((iyy-izz)*(yawHit*yawHit)*sin(sudutPitch)*cos(sudutPitch)*cos(sudutRoll));
 		k2 = ((-iyy + (izz - ixx)*cos(2*sudutRoll))*pitchHit*yawHit*cos(sudutPitch)) + ((izz - ixx)*((pitchHit*pitchHit)-(yawHit*yawHit)*cos(sudutPitch)*cos(sudutPitch))*sin(sudutRoll)*cos(sudutRoll));
 		k3 = ((-izz+ixx-iyy)*pitchHit*rollHit*cos(sudutRoll))+((izz+ixx-iyy)*pitchHit*yawHit*sin(sudutPitch)*cos(sudutRoll))+((izz-ixx+iyy)*rollHit*yawHit*cos(sudutPitch)*sin(sudutRoll))-((ixx-iyy)*(yawHit*yawHit)*sin(sudutPitch)*cos(sudutPitch)*sin(sudutRoll));

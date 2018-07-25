@@ -35,15 +35,15 @@ void i2c1_receive_data(uint16_t addr, uint8_t* data, uint8_t length);
 
 #define g 9.81 // 1g ~ 9.81 m/s^2
 #define magnetometer_cal 0.06 //magnetometer calibration
-#define kpr 1	//4.028
+#define kpr 20	//4.028
 #define kir 0//0.000035
 #define kdr 0//1.3
 
-#define kpp 0.000005//0.034	//4.028
+#define kpp 20//0.034	//4.028
 #define kip 0//0.0000008
 #define kdp 0//0.055
 
-#define kpy 0.01 //4.028
+#define kpy 5 //4.028
 #define kiy 0
 #define kdy 0
 
@@ -66,7 +66,7 @@ int hitesc1=0, hitesc2=0, hitesc3=0, hitesc4=0;
 float   lastErrVZ, errSumZ, errSumR, lastErrR, errSumP, lastErrP, errSumY, lastErrY, errpitch, errroll, erryaw, errz, lastErrPitch=0, lastErrRoll=0, lastErrYaw=0, lastErrZ=0;
 float esc1, esc2, esc3, esc4, VRollErr=0.0, VPitchErr=0.0, VYawErr=0.0, RErr = 0.0, PErr = 0.0, YErr = 0.0, lastVP=0, lastVR=0, lastVY=0,lastVZ=0, VZErr;
 double timeChange;
-float rollHit,pitchHit,yawHit,z,omegaRoll, omegaPitch, omegaYaw, dErrVP, dErrVY,dErrVR, dErrVZ,hitu1=0;;
+float rollHit,pitchHit,yawHit,z,omegaRoll, omegaPitch, omegaYaw, dErrVP, dErrVY,dErrVR, dErrVZ,hitu1=0, setY=0;
 int ARM;
 char txData[200];
  int main(void){
@@ -122,7 +122,7 @@ char txData[200];
 	// ARM=1;
 	vx = 0;
 	vy = 0; 
-	lastVZ =350;
+	lastVZ =375;
 	while (1){
 		
 		HAL_UART_Receive(&huart3, &received, 1, 10);
@@ -131,7 +131,7 @@ char txData[200];
 		HAL_ADC_Start(&hadc1);
 		adcData = HAL_ADC_GetValue(&hadc1);
 		
-		z = (7.5 * adcData/4096)-0.214233;
+		z = (7.5 * adcData/4096);//-0.214233;
 		vz = z/timeChange; 
 		now = 0.14;//TIM1->CNT;	168000000  0.04
 		timeChange = (now - lastTime);
@@ -159,7 +159,7 @@ char txData[200];
 		
 		sudutYaw = yaww/57.29577951308;//
 		omegaYaw = sudutYaw/timeChange;
- 
+		if(setY==0){setYaw=sudutYaw;setY=1;}
 		//-------------------Nilai Error--------------------------------------------
 		VRollErr = 0 - sudutRoll;//5.00;//(phi*roll/180)/now;
 		VPitchErr = 0 - sudutPitch;//0.0;//(phi*pitch/180)/now;
@@ -256,17 +256,18 @@ char txData[200];
 		f3 = (u1) - (u3) - (u4/(4*d));
 		f4 = (u1) + ((u2*0.7)) + (u4/(4*d));
 		*/
-		f1 = (u1/4) + (u3/2) - (u4/(4*d));
-		f2 = (u1/4) - (u2/2) + (u4/(4*d));
-		f3 = (u1/4) - (u3/2) - (u4/(4*d));
-		f4 = (u1/4) + (u2/2) + (u4/(4*d));
+		f1 = (u1/4) + (u3/2*panjang) - (u4/(4*d));
+		f2 = (u1/4) - (u2/2*panjang) + (u4/(4*d));
+		f3 = (u1/4) - (u3/2*panjang) - (u4/(4*d));
+		f4 = (u1/4) + (u2/2*panjang) + (u4/(4*d));
 		if(sudutPitch>0&&sudutPitch<0.0872664){hitesc2-=25;hitesc4+=25;}
 		if(ARM==1||ARM==-48){
 		esc1 = ((1285.0488095238+f1)/1.2584285714);//1.2584285714x – 1285.0488095238
-		esc2 = ((1285.0488095238+f2)/1.2584285714) ;
+		esc2 = ((1285.0488095238+f2)/1.2584285714);
 		esc3 = (1285.0488095238+f3)/1.2584285714;
-		esc4 = ((1285.0488095238+f4)/1.2584285714) ;
+		esc4 = ((1285.0488095238+f4)/1.2584285714);
 		
+			
 		if(esc1<=1250)esc1=1250;if(esc2<=1250)esc2=1250;if(esc3<=1250)esc3=1250;if(esc4<=1250)esc4=1250;
 		if(esc1>=2000)esc1=2000;if(esc2>=2000)esc2=2000;if(esc3>=2000)esc3=2000;if(esc4>=2000)esc4=2000;
 		} else if(ARM==0){
@@ -296,6 +297,14 @@ char txData[200];
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
 		sprintf(txData, "\t" );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "%f", z );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "\t" );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "%f", setYaw );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "\t" );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
 		sprintf(txData, "%f", esc1 );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
 		sprintf(txData, "\t" );
@@ -309,7 +318,7 @@ char txData[200];
 		sprintf(txData, "\t" );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
 		sprintf(txData, "%f", esc4 );
-		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10); 
 		sprintf(txData, "\r \n" );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
 		

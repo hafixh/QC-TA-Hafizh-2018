@@ -35,21 +35,21 @@ void i2c1_receive_data(uint16_t addr, uint8_t* data, uint8_t length);
 
 #define g 9.81 // 1g ~ 9.81 m/s^2
 #define magnetometer_cal 0.06 //magnetometer calibration
-#define kpr 3.3//0.02
+#define kpr 4.4//0.02
 #define kir 0//0.000035
-#define kdr 1.35 //0.0003//0.858//1.3
+#define kdr 1.9 //0.0003//0.858//1.3
 
-#define kpp 3.3//0.02	//4.028
+#define kpp 4.4//0.02	//4.028
 #define kip 0//0.0000008
-#define kdp 1.35//0.0003//0.827//0.055
+#define kdp 1.9//0.0003//0.827//0.055
 
-#define kpy 3.5 //4.028
+#define kpy 4 //4.028
 #define kiy 0
-#define kdy 0.75
+#define kdy 0.9
 
 #define kpz 2.8//3.2//4.028	//4.028
 #define kiz 0	//0.0000000183
-#define kdz 0.3//0.5
+#define kdz 0.35//0.5
 
 #define massa 1.210
 #define panjang 0.54
@@ -122,7 +122,7 @@ char txData[200];
 	// ARM=1;
 	vx = 0;
 	vy = 0; 
-	lastVZ = 450;
+	lastVZ = 400;
 	while (1){
 		
 		HAL_UART_Receive(&huart3, &received, 1, 10);
@@ -159,7 +159,7 @@ char txData[200];
 		
 		sudutYaw = yaww;//57.29577951308;//
 		
-	//	sudutYaw = (yaww - 0) * (85 - (-85)) / (360 - 0) + (-85);
+		sudutYaw = (yaww - 0) * (180 - (-180)) / (360 - 0) + (-180);
 		sudutYaw /=57.29577951308;
 		
 		omegaYaw = sudutYaw/timeChange;
@@ -167,7 +167,7 @@ char txData[200];
 		//-------------------Nilai Error--------------------------------------------
 		VRollErr = 0 - sudutRoll;//5.00;//(phi*roll/180)/now;
 		VPitchErr = 0 - sudutPitch;//0.0;//(phi*pitch/180)/now;
-		VYawErr = setYaw - sudutYaw;//(phi*RawYaw/180)/now;
+		VYawErr = 0 - sudutYaw;//(phi*RawYaw/180)/now;
 		VZErr = lastVZ - z;
 		
 		errpitch = lastErrPitch + VPitchErr;

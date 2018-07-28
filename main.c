@@ -35,21 +35,21 @@ void i2c1_receive_data(uint16_t addr, uint8_t* data, uint8_t length);
 
 #define g 9.81 // 1g ~ 9.81 m/s^2
 #define magnetometer_cal 0.06 //magnetometer calibration
-#define kpr 20	//4.028
+#define kpr 3.3//0.02
 #define kir 0//0.000035
-#define kdr 0//1.3
+#define kdr 1.35 //0.0003//0.858//1.3
 
-#define kpp 20//0.034	//4.028
+#define kpp 3.3//0.02	//4.028
 #define kip 0//0.0000008
-#define kdp 0//0.055
+#define kdp 1.35//0.0003//0.827//0.055
 
-#define kpy 5 //4.028
+#define kpy 3.5 //4.028
 #define kiy 0
-#define kdy 0
+#define kdy 0.75
 
-#define kpz 5//3.2//4.028	//4.028
+#define kpz 2.8//3.2//4.028	//4.028
 #define kiz 0	//0.0000000183
-#define kdz 0//0.5
+#define kdz 0.3//0.5
 
 #define massa 1.210
 #define panjang 0.54
@@ -61,7 +61,7 @@ float iyy = massa * ((panjang*panjang)+(panjang*panjang));
 float izz = (massa * (panjang*panjang))/12;
 float k1,k2,k3,vzpid, vpitch,vroll,vyaw,vx,vy,vz,u1,u2,u3,u4,f1,f2,f3,f4, setYaw, ftotal, esc1er=0, esc2er=0, esc3er=0, esc4er=0;
 int lastTime;
-float now, OutPIDVR, OutPIDVP, OutPIDVY, OutPIDVZ;
+float now, OutPIDVR, OutPIDVP, OutPIDVY, OutPIDVZ, escgab1, escgab2, escgab3, escgab4;
 int hitesc1=0, hitesc2=0, hitesc3=0, hitesc4=0;
 float   lastErrVZ, errSumZ, errSumR, lastErrR, errSumP, lastErrP, errSumY, lastErrY, errpitch, errroll, erryaw, errz, lastErrPitch=0, lastErrRoll=0, lastErrYaw=0, lastErrZ=0;
 float esc1, esc2, esc3, esc4, VRollErr=0.0, VPitchErr=0.0, VYawErr=0.0, RErr = 0.0, PErr = 0.0, YErr = 0.0, lastVP=0, lastVR=0, lastVY=0,lastVZ=0, VZErr;
@@ -122,7 +122,7 @@ char txData[200];
 	// ARM=1;
 	vx = 0;
 	vy = 0; 
-	lastVZ =375;
+	lastVZ = 450;
 	while (1){
 		
 		HAL_UART_Receive(&huart3, &received, 1, 10);
@@ -157,7 +157,11 @@ char txData[200];
 		}
 		omegaPitch=sudutPitch/timeChange;
 		
-		sudutYaw = yaww/57.29577951308;//
+		sudutYaw = yaww;//57.29577951308;//
+		
+	//	sudutYaw = (yaww - 0) * (85 - (-85)) / (360 - 0) + (-85);
+		sudutYaw /=57.29577951308;
+		
 		omegaYaw = sudutYaw/timeChange;
 		if(setY==0){setYaw=sudutYaw;setY=1;}
 		//-------------------Nilai Error--------------------------------------------
@@ -216,11 +220,7 @@ char txData[200];
 		k1 = ((ixx+iyy-izz) * (omegaPitch*omegaRoll* sin(sudutRoll)))+((-ixx + iyy - izz) * (omegaPitch * omegaYaw * sin(sudutPitch) * sin(sudutRoll)))+((ixx + iyy - izz)*omegaRoll*omegaYaw*cos(sudutPitch)*cos(sudutRoll))+((iyy-izz)*(omegaYaw*omegaYaw)*sin(sudutPitch)*cos(sudutPitch)*cos(sudutRoll));
 		k2 = ((-iyy + (izz - ixx)*cos(2*sudutRoll))*omegaPitch*omegaYaw*cos(sudutPitch)) + ((izz - ixx)*((omegaPitch*omegaPitch)-(omegaYaw*omegaYaw)*cos(sudutPitch)*cos(sudutPitch))*sin(sudutRoll)*cos(sudutRoll));
 		k3 = ((-izz+ixx-iyy)*omegaPitch*omegaRoll*cos(sudutRoll))+((izz+ixx-iyy)*omegaPitch*omegaYaw*sin(sudutPitch)*cos(sudutRoll))+((izz-ixx+iyy)*omegaRoll*omegaYaw*cos(sudutPitch)*sin(sudutRoll))-((ixx-iyy)*(omegaYaw*omegaYaw)*sin(sudutPitch)*cos(sudutPitch)*sin(sudutRoll));
-/*/
-		k1 = ((ixx+iyy-izz) * (vpitch *vroll * sin(sudutRoll)))+((-ixx + iyy - izz) * (vpitch * vyaw * sin(sudutPitch) * sin (sudutRoll)))+((ixx + iyy - izz)*vroll  *vyaw * cos(sudutPitch) * cos(sudutRoll)) + ((iyy-izz)*(vyaw * vyaw ) * sin(sudutPitch)*cos(sudutPitch)*cos(sudutRoll));
-		k2 = ((-iyy + (izz - ixx)*cos(20))*vpitch *vyaw *cos(sudutPitch)) + ((izz - ixx)*((vpitch *vpitch )-(vyaw *vyaw)*cos(sudutPitch)*cos(sudutPitch))*sin(sudutRoll)*cos(sudutRoll));
-		k3 = ((-izz+ixx-iyy)*vpitch *vroll *cos(sudutRoll))+((izz+ixx-iyy)*vpitch *vyaw *sin(sudutPitch)*cos(sudutRoll))+((izz-ixx+iyy)*vroll *vyaw *cos(sudutPitch)*sin(sudutRoll))-((ixx-iyy)*(vyaw *vyaw )*sin(sudutPitch)*cos(sudutPitch)*sin(sudutRoll));
-		*/
+ 
 	//	ftotal = f1+f2+f3+f4;
 	//	vx=((sin(sudutRoll*cos(sudutYaw))+(sin(sudutPitch)*cos(sudutRoll)*sin(sudutYaw))))*ftotal/massa;
 	//	vy=((sin(sudutRoll*cos(sudutYaw))-(sin(sudutPitch)*cos(sudutRoll)*sin(sudutYaw))))*ftotal/massa;
@@ -229,34 +229,7 @@ char txData[200];
 		u3 = ((iyy*vroll)+(iyy*sin(sudutPitch)*vyaw))- k2;
 		u4 = ((izz*sin(sudutRoll)*vpitch)+(izz*cos(sudutPitch)*cos(sudutRoll)*vyaw))- k3; 
 		
-	/*	f1 = (u1/4) + (u3/2*panjang) - (u4/4*d);
-		f2 = (u1/4) - (u2/2*panjang) + (u4/4*d);
-		f3 = (u1/4) - (u3/2*panjang) - (u4/4*d);
-		f4 = (u1/4) + (u2/2*panjang) + (u4/4*d); 
-		/*/
-		
-	/*  if(sudutPitch>-0.17453292&&sudutPitch<=-0.0872664) hitesc2-=0.01;
-		else if(sudutPitch>-0.261799&&sudutPitch<=-0.17453292) hitesc2-=0.06; 
-		else if(sudutPitch>-0.261799&&sudutPitch<=-0.17453292) hitesc2-=0.1; 
-		else if(sudutPitch>-0.349065&&sudutPitch<=-0.261799) hitesc2-=0.5; 
-		
-		if(sudutPitch<0.17453292&&sudutPitch>=0.0872664) hitesc4-=0.01; 
-		else if(sudutPitch<0.261799&&sudutPitch>=0.17453292) hitesc4-=0.06; 
-		else if(sudutPitch<0.261799&&sudutPitch>=0.17453292) hitesc4-=0.1;  
-		else if(sudutPitch<=0.349065&&sudutPitch>0.261799) hitesc4-=0.5; 
-   */
-	 /*
-		f1 = (u1) + (u3/2) - (u4/(4*d));
-		f2 = (u1) - ((u2*750*0.92) ) + (u4/(4*d));
-		f3 = (u1) - (u3/2) - (u4/(4*d));
-		f4 = (u1) + ((u2*750*0.958)) + (u4/(4*d)); 
-		//
-		f1 = (u1) + (u3) - (u4/(4*d));
-		f2 = (u1) - ((u2) ) + (u4/(4*d));
-		f3 = (u1) - (u3) - (u4/(4*d));
-		f4 = (u1) + ((u2*0.7)) + (u4/(4*d));
-		*/
-		f1 = (u1/4) + (u3/2*panjang) - (u4/(4*d));
+		f1 = (u1/4) + (u3/2*panjang) - (u4/(4*d)); //panjang = 0.54| 1/(0.54*2) = 0.92592592592
 		f2 = (u1/4) - (u2/2*panjang) + (u4/(4*d));
 		f3 = (u1/4) - (u3/2*panjang) - (u4/(4*d));
 		f4 = (u1/4) + (u2/2*panjang) + (u4/(4*d));
@@ -266,10 +239,15 @@ char txData[200];
 		esc2 = ((1285.0488095238+f2)/1.2584285714);
 		esc3 = (1285.0488095238+f3)/1.2584285714;
 		esc4 = ((1285.0488095238+f4)/1.2584285714);
+		if(esc1<=1250)esc1=1250;
+		else if(esc1>=2000)esc1=2000;
+		if(esc2>=2000)esc2=2000;
+		else if(esc2<=1250)esc2=1250;
+		if(esc3>=2000)esc3=2000;	
+		else if(esc3<=1250)esc3=1250;
+		if(esc4>=2000)esc4=2000;	
+		else if(esc4<=1250)esc4=1250;
 		
-			
-		if(esc1<=1250)esc1=1250;if(esc2<=1250)esc2=1250;if(esc3<=1250)esc3=1250;if(esc4<=1250)esc4=1250;
-		if(esc1>=2000)esc1=2000;if(esc2>=2000)esc2=2000;if(esc3>=2000)esc3=2000;if(esc4>=2000)esc4=2000;
 		} else if(ARM==0){
 		esc1 = 0;
 		esc2 = 0;
@@ -277,6 +255,10 @@ char txData[200];
 		esc4 = 0;
 		} 
 
+	/*	escgab1 = esc2-esc4;
+		escgab2 = esc1-esc3;
+		esc2-=escgab1; esc4+=escgab1;
+		esc1-=escgab2; esc3+=escgab2; */
 		
 		set_esc(TIM_CHANNEL_1, esc1);
 		set_esc(TIM_CHANNEL_2, esc2);
@@ -301,7 +283,15 @@ char txData[200];
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
 		sprintf(txData, "\t" );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
-		sprintf(txData, "%f", setYaw );
+		sprintf(txData, "%f", u2 );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "\t" );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "%f", u3 );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "\t" );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "%f", u4 );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
 		sprintf(txData, "\t" );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);

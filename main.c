@@ -35,17 +35,17 @@ void i2c1_receive_data(uint16_t addr, uint8_t* data, uint8_t length);
 
 #define g 9.81 // 1g ~ 9.81 m/s^2
 #define magnetometer_cal 0.06 //magnetometer calibration
-#define kpr 4.4//0.02
+#define kpr 0//0.02//4.4
 #define kir 0//0.000035
-#define kdr 1.9 //0.0003//0.858//1.3
+#define kdr 250//380//175//130//160 //0.0003//0.858//1.3
 
-#define kpp 4.4//0.02	//4.028
+#define kpp 0//0.02	//4.028//4.4
 #define kip 0//0.0000008
-#define kdp 1.9//0.0003//0.827//0.055
+#define kdp 250//175//130//160//0.0003//0.827//0.055//1.3
 
-#define kpy 4 //4.028
+#define kpy 0//2 //4.028
 #define kiy 0
-#define kdy 0.9
+#define kdy 0//0.5//1.2
 
 #define kpz 2.8//3.2//4.028	//4.028
 #define kiz 0	//0.0000000183
@@ -122,7 +122,7 @@ char txData[200];
 	// ARM=1;
 	vx = 0;
 	vy = 0; 
-	lastVZ = 400;
+	lastVZ = 330;
 	while (1){
 		
 		HAL_UART_Receive(&huart3, &received, 1, 10);
@@ -233,12 +233,17 @@ char txData[200];
 		f2 = (u1/4) - (u2/2*panjang) + (u4/(4*d));
 		f3 = (u1/4) - (u3/2*panjang) - (u4/(4*d));
 		f4 = (u1/4) + (u2/2*panjang) + (u4/(4*d));
+		/*/
+		f1 = (u1/4) + (u3*450*0.9);// - (u4*1.5/(4*d)); //panjang = 0.54| 1/(0.54*2) = 0.92592592592
+		f2 = (u1/4) - (u2*450*0.9);// + (u4*1.5/(4*d));
+		f3 = (u1/4) - (u3*450*0.9);// - (u4*1.5/(4*d));
+		f4 = (u1/4) + (u2*450*0.9);// + (u4*1.5/(4*d));*/
 		if(sudutPitch>0&&sudutPitch<0.0872664){hitesc2-=25;hitesc4+=25;}
 		if(ARM==1||ARM==-48){
-		esc1 = ((1285.0488095238+f1)/1.2584285714);//1.2584285714x – 1285.0488095238
-		esc2 = ((1285.0488095238+f2)/1.2584285714);
-		esc3 = (1285.0488095238+f3)/1.2584285714;
-		esc4 = ((1285.0488095238+f4)/1.2584285714);
+		esc1 = ((3419.125+f1)/2.6058823529);//1.2584285714x – 1285.0488095238
+		esc2 = ((3419.125+f2)/2.6058823529);
+		esc3 = ((3419.125+f3)/2.6058823529);
+		esc4 = ((3419.125+f4)/2.6058823529);
 		if(esc1<=1250)esc1=1250;
 		else if(esc1>=2000)esc1=2000;
 		if(esc2>=2000)esc2=2000;
@@ -267,31 +272,27 @@ char txData[200];
 		 
 		lastTime = now;
 		
-		sprintf(txData, "%f", sudutPitch );
+		sprintf(txData, "%f", VRollErr );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
 		sprintf(txData, "\t" );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
-		sprintf(txData, "%f", sudutRoll );
+		sprintf(txData, "%f", VPitchErr );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
 		sprintf(txData, "\t" );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
-		sprintf(txData, "%f", sudutYaw );
+		sprintf(txData, "%f", vpitch );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "\t" );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "%f", vroll );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "\t" );
+		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
+		sprintf(txData, "%f", vzpid );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
 		sprintf(txData, "\t" );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
 		sprintf(txData, "%f", z );
-		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
-		sprintf(txData, "\t" );
-		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
-		sprintf(txData, "%f", u2 );
-		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
-		sprintf(txData, "\t" );
-		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
-		sprintf(txData, "%f", u3 );
-		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
-		sprintf(txData, "\t" );
-		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
-		sprintf(txData, "%f", u4 );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
 		sprintf(txData, "\t" );
 		HAL_UART_Transmit(&huart3, (uint8_t *)&txData, strlen(txData), 10);
